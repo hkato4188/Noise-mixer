@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Noise Mixer</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+
+<body>
+  <main class="wrap">
+    <header class="header">
+      <div>
+        <div class="brand">Noise Mixer</div>
+        <div class="sub">Layer ambience. Simple controls. No fiddly knobs.</div>
+      </div>
+
+      <div class="header-actions">
+        <button id="startBtn" class="btn primary">Start Audio</button>
+        <button id="stopAllBtn" class="btn">Stop All</button>
+        <button id="resetBtn" class="btn">Reset</button>
+      </div>
+    </header>
+
+    <section class="layout">
+      <section class="panel tracks">
+        <div class="panel-title">Tracks</div>
+        <div id="trackList" class="track-list"></div>
+      </section>
+
+      <aside class="panel side">
+        <div class="panel-title">Master</div>
+
+        <div class="master">
+          <div class="master-row">
+            <div class="label">Master Volume</div>
+            <div class="value"><span id="masterPct">100</span>%</div>
+          </div>
+
+          <input id="masterSlider" class="slider" type="range" min="0" max="100" value="100" />
+
+          <div class="tips">
+            <div class="tip"><kbd>Space</kbd> Start / Resume audio</div>
+            <div class="tip"><kbd>Esc</kbd> Stop all</div>
+            <div class="tip"><kbd>Click</kbd> a track name to toggle play</div>
+          </div>
+        </div>
+
+        <div class="now">
+          <div class="panel-title small">Active</div>
+          <div id="activeList" class="active-list">None</div>
+        </div>
+      </aside>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
