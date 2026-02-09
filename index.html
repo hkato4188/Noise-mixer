@@ -8,16 +8,11 @@
 </head>
 
 <body>
-  <!-- animated background layers -->
-  <div class="bg"></div>
-  <div class="bg bg2"></div>
-  <div class="bg bg3"></div>
-
   <main class="wrap">
     <header class="header">
       <div>
         <div class="brand">Noise Mixer</div>
-        <div class="sub">Layer ambience. Simple controls.</div>
+        <div class="sub">Layer ambience. Simple controls. No fiddly knobs.</div>
       </div>
 
       <div class="header-actions">
@@ -34,26 +29,30 @@
       </section>
 
       <aside class="panel side">
-        <div class="panel-title">Master</div>
-
-        <div class="master">
-          <div class="master-row">
-            <div class="label">Master Volume</div>
-            <div class="value"><span id="masterPct">100</span>%</div>
-          </div>
-
-          <input id="masterSlider" class="slider" type="range" min="0" max="100" value="100" />
-
-          <div class="tips">
-            <div class="tip"><kbd>Space</kbd> Start / Resume audio</div>
-            <div class="tip"><kbd>Esc</kbd> Stop all</div>
-            <div class="tip">Click a track name to toggle play</div>
-          </div>
+        <div class="side-head">
+          <button id="masterToggleBtn" class="smallbtn side-toggle" type="button" aria-expanded="true" aria-controls="sideBody">Collapse</button>
         </div>
 
-        <div class="now">
-          <div class="panel-title small">Active</div>
-          <div id="activeList" class="active-list">None</div>
+        <div id="sideBody" class="side-body">
+          <div class="master">
+            <div class="master-row">
+              <div class="label">Master Volume</div>
+              <div class="value"><span id="masterPct">100</span>%</div>
+            </div>
+
+            <input id="masterSlider" class="slider" type="range" min="0" max="100" value="100" />
+
+            <div class="tips">
+              <div class="tip"><kbd>Space</kbd> Start / Resume audio</div>
+              <div class="tip"><kbd>Esc</kbd> Stop all</div>
+              <div class="tip"><kbd>Click</kbd> a track name to toggle play</div>
+            </div>
+          </div>
+
+          <div class="now">
+            <div class="panel-title small">Active</div>
+            <div id="activeList" class="active-list">None</div>
+          </div>
         </div>
       </aside>
     </section>

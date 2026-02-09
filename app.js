@@ -8,6 +8,7 @@ const SOUNDS = [
 ];
 
 const STORAGE_KEY = "noise_mixer_v2";
+const MASTER_PANEL_COLLAPSED_KEY = "noise_mixer_master_panel_collapsed";
 
 let audioCtx = null;
 let masterGain = null;
@@ -30,11 +31,14 @@ const resetBtn = document.getElementById("resetBtn");
 const masterSlider = document.getElementById("masterSlider");
 const masterPct = document.getElementById("masterPct");
 const activeList = document.getElementById("activeList");
+const side = document.querySelector(".side");
+const masterToggleBtn = document.getElementById("masterToggleBtn");
 
 loadState();
 renderTracks();
 renderActive();
 syncStartButton();
+initMasterPanelToggle();
 
 /* ---------- UI events ---------- */
 
@@ -98,7 +102,7 @@ function renderTracks() {
 
       <div class="controls">
         <button class="smallbtn ${t.muted ? "on" : ""}" data-action="mute">${t.muted ? "Muted" : "Mute"}</button>
-        <button class="smallbtn ${t.solo ? "on" : ""}" data-action="solo">${t.solo ? "Solo" : (anySolo ? "Layer" : "Solo")}</button>
+        <button class="smallbtn ${t.solo ? "on" : ""}" data-action="solo">${getSoloButtonLabel(t, anySolo)}</button>
       </div>
 
       <div class="vol">
@@ -115,7 +119,10 @@ function renderTracks() {
       t.playing = !t.playing;
       if (t.playing && t.level01 === 0) t.level01 = 0.35; // sensible default
       if (t.playing) await ensurePlaying(s.id);
-      else stopSound(s.id);
+      else {
+        stopSound(s.id);
+        if (t.solo) t.solo = false;
+      }
 
       saveState();
       syncUiAndAudio();
@@ -124,25 +131,33 @@ function renderTracks() {
     // Mute / Solo
     row.querySelector('[data-action="mute"]').addEventListener("click", () => {
       t.muted = !t.muted;
+      // Muting a soloed track removes it from the solo set.
+      if (t.muted && t.solo) t.solo = false;
       // If you mute, keep playing but set gain to 0
       saveState();
       syncUiAndAudio();
     });
 
     row.querySelector('[data-action="solo"]').addEventListener("click", async () => {
-      const hadAnySolo = SOUNDS.some(x => state.tracks[x.id].solo);
+      const hadAnySolo = hasSoloTracks();
 
-      // Enter solo mode by isolating this track.
       if (!hadAnySolo) {
-        for (const x of SOUNDS) state.tracks[x.id].solo = false;
+        // Enter solo mode by isolating one track.
+        clearSoloFlags();
         t.solo = true;
+      } else if (t.solo) {
+        // Clicking an already-soloed track removes it.
+        // If it was the last one, this exits solo mode.
+        t.solo = false;
       } else {
-        // In solo mode, clicking non-solo track layers it in; clicking solo track removes it.
-        t.solo = !t.solo;
+        // Solo mode is active: add this track to the layered solo set.
+        t.solo = true;
       }
 
-      // Ensure solo/layered tracks actually play when they have volume.
-      if (t.solo && t.level01 > 0) {
+      // Solo intent means "make this track audible now".
+      if (t.solo) {
+        if (t.muted) t.muted = false;
+        if (t.level01 === 0) t.level01 = 0.35;
         await ensureAudioStarted();
         t.playing = true;
         await ensurePlaying(s.id);
@@ -172,6 +187,7 @@ function renderTracks() {
       } else {
         t.playing = false;
         stopSound(s.id);
+        if (t.solo) t.solo = false;
         renderTracks(); // update meta
       }
 
@@ -281,6 +297,7 @@ function stopAll() {
     state.tracks[s.id].playing = false;
     stopSound(s.id);
   }
+  clearSoloFlags();
   state.started = false;
   syncStartButton();
   saveState();
@@ -362,8 +379,38 @@ function hasSoloTracks() {
   return SOUNDS.some(s => state.tracks[s.id].solo);
 }
 
+function clearSoloFlags() {
+  for (const s of SOUNDS) state.tracks[s.id].solo = false;
+}
+
+function getSoloButtonLabel(track, anySolo) {
+  if (track.solo) return "Remove Layer";
+  return anySolo ? "Add Layer" : "Solo";
+}
+
 function syncUiAndAudio() {
   renderTracks();
   applyAllGains();
   renderActive();
+}
+
+function initMasterPanelToggle() {
+  if (!side || !masterToggleBtn) return;
+
+  const collapsed = localStorage.getItem(MASTER_PANEL_COLLAPSED_KEY) === "1";
+  setMasterPanelCollapsed(collapsed);
+
+  masterToggleBtn.addEventListener("click", () => {
+    const isCollapsed = side.classList.contains("collapsed");
+    setMasterPanelCollapsed(!isCollapsed);
+  });
+}
+
+function setMasterPanelCollapsed(collapsed) {
+  if (!side || !masterToggleBtn) return;
+
+  side.classList.toggle("collapsed", collapsed);
+  masterToggleBtn.textContent = collapsed ? "Expand" : "Collapse";
+  masterToggleBtn.setAttribute("aria-expanded", String(!collapsed));
+  localStorage.setItem(MASTER_PANEL_COLLAPSED_KEY, collapsed ? "1" : "0");
 }
