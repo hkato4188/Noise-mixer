@@ -8,37 +8,60 @@
 }
 
 *{ box-sizing:border-box; }
-html { height: 100%; }
+@property --a{
+  syntax: '<angle>';
+  inherits: true;
+  initial-value: 0deg;
+}
+
+@property --p {
+  syntax: '<percentage>';
+  inherits: true;
+  initial-value: 0%;
+}
+
+@property --c1 {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #000;
+}
+
+@property --c2 {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #000;
+}
+
+html {
+  height: 100%;
+  --s: 80px;
+  --_g: #0000, var(--c1) 2deg calc(var(--a) - 2deg), #0000 var(--a);
+  background:
+    conic-gradient(from calc(-45deg - var(--a)/2) at top var(--p) left var(--p), var(--_g)),
+    conic-gradient(from calc(-45deg - var(--a)/2) at top var(--p) left var(--p), var(--_g)),
+    conic-gradient(from calc(45deg - var(--a)/2) at top var(--p) right var(--p), var(--_g)),
+    conic-gradient(from calc(45deg - var(--a)/2) at top var(--p) right var(--p), var(--_g)),
+    conic-gradient(from calc(-135deg - var(--a)/2) at bottom var(--p) left var(--p), var(--_g)),
+    conic-gradient(from calc(-135deg - var(--a)/2) at bottom var(--p) left var(--p), var(--_g)),
+    conic-gradient(from calc(135deg - var(--a)/2) at bottom var(--p) right var(--p), var(--_g)),
+    conic-gradient(from calc(135deg - var(--a)/2) at bottom var(--p) right var(--p), var(--_g))
+    var(--c2);
+  background-size: calc(2 * var(--s)) calc(2 * var(--s));
+  animation: m 2s infinite alternate linear;
+}
+
 body{
   margin:0;
   min-height:100%;
   font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
   color: var(--text);
   overflow-x:hidden;
+  background: transparent;
 }
 
-/* ---- Sliding diagonals background (CodePen-style) ---- */
+/* keep compatibility with existing HTML background nodes */
 .bg{
-  animation: slide 6s ease-in-out infinite alternate;
-  background-image: linear-gradient(-60deg, #6c3 50%, #09f 50%);
-  bottom:0;
-  left:-50%;
-  opacity:.28;
-  position:fixed;
-  right:-50%;
-  top:0;
-  z-index:-2;
-}
-
-.bg2{
-  animation-direction:alternate-reverse;
-  animation-duration:8s;
-  opacity:.22;
-}
-
-.bg3{
-  animation-duration:10s;
-  opacity:.18;
+  display: none;
 }
 
 /* dark overlay so UI stays readable */
@@ -48,12 +71,38 @@ body::before{
   inset:0;
   z-index:-1;
   pointer-events:none;
-  background: linear-gradient(180deg, rgba(0,0,0,0.40), rgba(0,0,0,0.60));
+  background: linear-gradient(180deg, rgba(0,0,0,0.38), rgba(0,0,0,0.58));
 }
 
-@keyframes slide{
-  0% { transform: translateX(-25%); }
-  100% { transform: translateX(25%); }
+@keyframes m {
+  0%, 15% {
+    --a: 135deg;
+    --p: 20%;
+    --c1: #3b8183;
+    --c2: #fad089;
+    background-position: 0 0, var(--s) var(--s);
+  }
+  45%, 50% {
+    --a: 90deg;
+    --p: 25%;
+    --c1: #3b8183;
+    --c2: #fad089;
+    background-position: 0 0, var(--s) var(--s);
+  }
+  50.01%, 55% {
+    --a: 90deg;
+    --p: 25%;
+    --c2: #3b8183;
+    --c1: #fad089;
+    background-position: var(--s) 0, 0 var(--s);
+  }
+  85%, 100% {
+    --a: 135deg;
+    --p: 20%;
+    --c2: #3b8183;
+    --c1: #fad089;
+    background-position: var(--s) 0, 0 var(--s);
+  }
 }
 
 /* ---- App layout ---- */
@@ -251,4 +300,121 @@ kbd{
   border: 1px solid rgba(255,255,255,0.12);
   background: rgba(0,0,0,0.22);
   min-height: 48px;
+}
+
+/* ---- Mobile pinned layout ---- */
+@media (max-width: 768px){
+  :root{
+    --mobile-top-h: 230px;
+    --mobile-bottom-h: 122px;
+  }
+
+  .wrap{
+    padding-top: calc(var(--mobile-top-h) + 12px + env(safe-area-inset-top));
+    padding-bottom: calc(var(--mobile-bottom-h) + 16px + env(safe-area-inset-bottom));
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+
+  .layout{
+    display: block;
+  }
+
+  .header{
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 40;
+    margin: 0;
+    padding: 10px 10px calc(10px + env(safe-area-inset-bottom));
+    background: rgba(10,14,18,0.76);
+    border-top: 1px solid rgba(255,255,255,0.16);
+    backdrop-filter: blur(14px);
+    align-items: stretch;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .header .sub{
+    display: none;
+  }
+
+  .header .brand{
+    font-size: 14px;
+    text-align: center;
+  }
+
+  .header-actions{
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .header-actions .btn{
+    width: 100%;
+    padding: 12px 8px;
+    border-radius: 12px;
+    font-size: 13px;
+    font-weight: 700;
+    text-align: center;
+    box-shadow: none;
+    min-height: 46px;
+  }
+
+  .side{
+    position: fixed;
+    left: 10px;
+    right: 10px;
+    top: calc(8px + env(safe-area-inset-top));
+    z-index: 35;
+    margin: 0;
+    padding-bottom: 10px;
+    background: rgba(9,14,20,0.78);
+    backdrop-filter: blur(14px);
+  }
+
+  .side .panel-title{
+    padding-top: 10px;
+    padding-bottom: 8px;
+    font-size: 13px;
+  }
+
+  .side .panel-title.small{
+    margin-top: 8px;
+  }
+
+  .master{
+    padding: 0 10px 8px;
+  }
+
+  .master-row{
+    margin-bottom: 6px;
+  }
+
+  .tips{
+    display: none;
+  }
+
+  .active-list{
+    margin: 0 10px 0;
+    min-height: 42px;
+    padding: 10px;
+    font-size: 13px;
+  }
+
+  .tracks{
+    margin-top: 0;
+  }
+
+  .track{
+    grid-template-columns: 1fr;
+    gap: 8px;
+    padding: 11px 9px;
+  }
+
+  .controls{
+    justify-content: flex-start;
+  }
 }
