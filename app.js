@@ -34,6 +34,7 @@ const activeList = document.getElementById("activeList");
 loadState();
 renderTracks();
 renderActive();
+syncStartButton();
 
 /* ---------- UI events ---------- */
 
@@ -50,11 +51,7 @@ resetBtn.addEventListener("click", () => {
     state.tracks[s.id] = { level01: 0, playing: false, muted: false, solo: false };
   }
   state.master = 1.0;
-  saveState();
   stopAll();
-  renderTracks();
-  applyAllGains();
-  renderActive();
 });
 
 masterSlider.addEventListener("input", async () => {
@@ -81,6 +78,7 @@ function renderTracks() {
 
   masterSlider.value = String(Math.round(state.master * 100));
   masterPct.textContent = String(Math.round(state.master * 100));
+  const anySolo = hasSoloTracks();
 
   for (const s of SOUNDS) {
     const t = state.tracks[s.id];
@@ -100,7 +98,7 @@ function renderTracks() {
 
       <div class="controls">
         <button class="smallbtn ${t.muted ? "on" : ""}" data-action="mute">${t.muted ? "Muted" : "Mute"}</button>
-        <button class="smallbtn ${t.solo ? "on" : ""}" data-action="solo">Solo</button>
+        <button class="smallbtn ${t.solo ? "on" : ""}" data-action="solo">${t.solo ? "Solo" : (anySolo ? "Layer" : "Solo")}</button>
       </div>
 
       <div class="vol">
@@ -120,9 +118,7 @@ function renderTracks() {
       else stopSound(s.id);
 
       saveState();
-      renderTracks();
-      applyAllGains();
-      renderActive();
+      syncUiAndAudio();
     });
 
     // Mute / Solo
@@ -130,17 +126,30 @@ function renderTracks() {
       t.muted = !t.muted;
       // If you mute, keep playing but set gain to 0
       saveState();
-      renderTracks();
-      applyAllGains();
-      renderActive();
+      syncUiAndAudio();
     });
 
-    row.querySelector('[data-action="solo"]').addEventListener("click", () => {
-      t.solo = !t.solo;
+    row.querySelector('[data-action="solo"]').addEventListener("click", async () => {
+      const hadAnySolo = SOUNDS.some(x => state.tracks[x.id].solo);
+
+      // Enter solo mode by isolating this track.
+      if (!hadAnySolo) {
+        for (const x of SOUNDS) state.tracks[x.id].solo = false;
+        t.solo = true;
+      } else {
+        // In solo mode, clicking non-solo track layers it in; clicking solo track removes it.
+        t.solo = !t.solo;
+      }
+
+      // Ensure solo/layered tracks actually play when they have volume.
+      if (t.solo && t.level01 > 0) {
+        await ensureAudioStarted();
+        t.playing = true;
+        await ensurePlaying(s.id);
+      }
+
       saveState();
-      renderTracks();
-      applyAllGains();
-      renderActive();
+      syncUiAndAudio();
     });
 
     // Volume slider
@@ -174,15 +183,22 @@ function renderTracks() {
 }
 
 function renderActive() {
+  const anySolo = hasSoloTracks();
   const active = SOUNDS.filter(s => {
     const t = state.tracks[s.id];
-    return t.playing && t.level01 > 0 && !t.muted;
+    const allowedBySolo = anySolo ? t.solo : true;
+    return t.playing && t.level01 > 0 && !t.muted && allowedBySolo;
   }).map(s => s.name);
 
   activeList.textContent = active.length ? active.join(", ") : "None";
 }
 
 /* ---------- Audio ---------- */
+
+function syncStartButton() {
+  startBtn.textContent = state.started ? "Audio Ready" : "Start Audio";
+  startBtn.disabled = state.started;
+}
 
 async function ensureAudioStarted() {
   if (!audioCtx) {
@@ -195,8 +211,7 @@ async function ensureAudioStarted() {
 
   if (!state.started) {
     state.started = true;
-    startBtn.textContent = "Audio Ready";
-    startBtn.disabled = true;
+    syncStartButton();
 
     // Create gain nodes for each track
     for (const s of SOUNDS) {
@@ -208,13 +223,17 @@ async function ensureAudioStarted() {
       }
     }
 
-    // If any track is marked playing, start it
+    // Auto-start tracks based on selected slider levels.
+    // If volume is above 0, mark the track as playing and start its source.
     for (const s of SOUNDS) {
       const t = state.tracks[s.id];
-      if (t.playing && t.level01 > 0) await ensurePlaying(s.id);
+      if (t.level01 > 0) {
+        t.playing = true;
+        await ensurePlaying(s.id);
+      }
     }
-    applyAllGains();
-    renderActive();
+    saveState();
+    syncUiAndAudio();
   }
 }
 
@@ -227,8 +246,13 @@ async function ensurePlaying(id) {
 
   if (!node.buffer && !node.loading) {
     node.loading = true;
-    node.buffer = await loadAudioBuffer(def.url);
-    node.loading = false;
+    try {
+      node.buffer = await loadAudioBuffer(def.url);
+    } catch (err) {
+      console.error(`Unable to load audio for "${id}"`, err);
+    } finally {
+      node.loading = false;
+    }
   }
   if (!node.buffer) return;
 
@@ -257,10 +281,10 @@ function stopAll() {
     state.tracks[s.id].playing = false;
     stopSound(s.id);
   }
+  state.started = false;
+  syncStartButton();
   saveState();
-  renderTracks();
-  applyAllGains();
-  renderActive();
+  syncUiAndAudio();
 }
 
 function applyAllGains() {
@@ -269,7 +293,7 @@ function applyAllGains() {
   // Master
   masterGain.gain.setTargetAtTime(state.master, audioCtx.currentTime, 0.02);
 
-  const anySolo = SOUNDS.some(s => state.tracks[s.id].solo);
+  const anySolo = hasSoloTracks();
 
   for (const s of SOUNDS) {
     const t = state.tracks[s.id];
@@ -332,4 +356,14 @@ function saveState() {
 
 function clamp(n, a, b) {
   return Math.max(a, Math.min(b, n));
+}
+
+function hasSoloTracks() {
+  return SOUNDS.some(s => state.tracks[s.id].solo);
+}
+
+function syncUiAndAudio() {
+  renderTracks();
+  applyAllGains();
+  renderActive();
 }
