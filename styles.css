@@ -268,7 +268,7 @@ body::before{
   overflow: hidden;
 }
 
-.master{ padding: 0 14px 10px; }
+.master{ padding: 10px 14px 10px; }
 
 .master-row{
   display:flex;
